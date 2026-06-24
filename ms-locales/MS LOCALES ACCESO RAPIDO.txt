@@ -1,0 +1,35 @@
+MS LOCALES CONFIGURACION
+
+{
+    "nombre":"Local1",
+    "direccion":"mi casa",
+    "ciudad":"Puerto montt"
+}
+
+{
+    "numeroMesa":1,
+    "capacidad":4,
+    "localId":1
+}
+
+http://localhost:8081/api/locales
+GET
+POST
+
+http://localhost:8081/api/locales/{id}
+GET
+DELETE
+
+http://localhost:8081/api/locales/mesas
+GET
+POST
+
+http://localhost:8081/api/locales/mesas/{id}
+GET
+DELETE
+
+http://localhost:8081/api/locales/mesas/filtro/{Localid}?estado=(OCUPADA o LIBRE o RESERVADA)
+GET
+
+http://localhost:8081/api/locales/mesas/1/estado?nuevoEstado=(OCUPADA o LIBRE o RESERVADA)
+PATCH

@@ -1,0 +1,48 @@
+name: CI/CD ms-locales Mar De Fuego
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-push-deploy-backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # SonarCloud necesita profundidad 0
+
+      # Configurar el entorno de Java en el servidor de GitHub
+      - name: Configurar JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven' # Optimiza los tiempos de ejecucion
+
+      # Ejecutar Pruebas Unitarias. Si una falla aqui muere
+      - name: Ejecutar Pruebas con Maven Wrapper
+        run: |
+          cd ms-locales
+          chmod +x mvnw
+          ./mvnw clean test
+
+      # Enviar analisis y reporte de JaCoCo a SonarCloud
+      - name: Analizar código con SonarCloud
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          cd ms-locales
+          ./mvnw sonar:sonar \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+
+      # El Freno del Quality Gate. Detiene el pipeline si da ROJO
+      - name: Validar Quality Gate de SonarCloud
+        uses: sonarsource/sonarqube-quality-gate-action@v1
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

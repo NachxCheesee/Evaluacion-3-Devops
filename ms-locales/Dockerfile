@@ -6,7 +6,7 @@ WORKDIR /app
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
-# Copiar el código fuente y compilar el archivo JAR (saltándose los tests para agilizar)
+# Copiar el código fuente y compilar el archivo JAR
 COPY src ./src
 RUN mvn clean package -DskipTests
 

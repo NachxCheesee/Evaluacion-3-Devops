@@ -44,5 +44,10 @@ jobs:
       - name: Validar Quality Gate de SonarCloud
         uses: sonarsource/sonarqube-quality-gate-action@v1
         timeout-minutes: 5
+        with:
+          # Donde queda el recibo en maven
+          scanMetadataReportFile: ms-locales/target/sonar/report-task.txt
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      # SI PASA TODO AQUI SIGUE LO DE AWS (CLUSTER ETCETC)

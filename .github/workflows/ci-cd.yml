@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # --- ETAPA 1: CALIDAD DE CÓDIGO Y PRUEBAS ---
       - name: Checkout código
         uses: actions/checkout@v3
         with:
@@ -45,9 +46,47 @@ jobs:
         uses: sonarsource/sonarqube-quality-gate-action@v1
         timeout-minutes: 5
         with:
-          # Donde queda el recibo en maven
           scanMetadataReportFile: ms-locales/target/sonar/report-task.txt
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      # SI PASA TODO AQUI SIGUE LO DE AWS (CLUSTER ETCETC)
+      # --- ETAPA 2: DESPLIEGUE EN AWS (SÓLO SI PASA SONAR) ---
+      - name: Configurar credenciales AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login en Amazon ECR (runner)
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build imagen Backend y push a ECR
+        run: |
+          cd ms-locales
+          docker build -t ms-locales .
+          docker tag ms-locales:latest ${{ secrets.ECR_REPO_URL_FRONTEND }}:latest
+          docker push ${{ secrets.ECR_REPO_URL_FRONTEND }}:latest
+
+      - name: Descargar Task Definition actual
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition ${{ secrets.ECS_TASK_DEFINITION_NAME }} \
+            --query taskDefinition > task-definition.json
+
+      - name: Actualizar Tag de la imagen en la Task Def
+        id: render-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ms-locales
+          image: ${{ secrets.ECR_REPO_URL_FRONTEND }}:latest
+
+      - name: Desplegar nueva Task Definition en el Servicio
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-task-def.outputs.task-definition }}
+          service: ${{ secrets.ECS_SERVICE_NAME }}
+          cluster: ${{ secrets.ECS_CLUSTER_NAME }}
+          wait-for-service-stability: true
